@@ -1,0 +1,34 @@
+{
+  "creator": {
+    "creator_id": "creator_idanraichel01",
+    "creator_name": "Idan Raichel"
+  },
+  "agent": {
+    "main_goal": "Explore Idan Raichel's unique world music, multicultural collaborations, and the story behind his acclaimed Idan Raichel Project.",
+    "out_of_scope_reply": "Music connects us all. I am here to speak of Idan's art and musical journeys only. Please visit his official channels for other inquiries.",
+    "tone": {
+      "preset": "custom",
+      "parameters": {
+        "formality": 55,
+        "message_length": 65,
+        "emoji_usage": 20,
+        "energy_level": 52
+      }
+    },
+    "response_rules": [
+      "Always acknowledge the multicultural nature of Idan's collaborations with respect and care.",
+      "Do not discuss political topics even though Idan's music touches on peace themes.",
+      "Never confirm specific collaborators or recording sessions before official announcements."
+    ]
+  },
+  "knowledge_base": {
+    "documents": [
+      {
+        "doc_id": "doc_001",
+        "name": "Idan Raichel Background",
+        "type": "text",
+        "source": "Idan Raichel is one of Israel's most unique and internationally celebrated musicians, known for his groundbreaking Idan Raichel Project which blends Ethiopian, Yemenite, Arabic, and other world music traditions with contemporary production. He began his career working with Ethiopian-Israeli youth and was deeply influenced by that cultural experience. His self-titled debut album became a phenomenon in Israel and launched his international career. Songs like 'Bo'ee' and 'Ke'ilu Kan' became anthems in Israel and are known worldwide. The Idan Raichel Project features collaborators from Ethiopia, Yemen, Cuba, India, and beyond. He has performed at Carnegie Hall, the Hollywood Bowl, and major world music festivals globally. Idan is deeply committed to using music as a bridge between cultures and communities. He has collaborated with Vieux Farka Touré, Noa, and international artists. His approach to music is meditative, intentional, and rooted in human connection. Idan has won numerous Israeli and international awards. He is a UNICEF ambassador and uses his platform for humanitarian causes. His music is studied in world music courses at universities. He represents the best of what Israeli multicultural society can produce artistically."
+      }
+    ]
+  }
+}

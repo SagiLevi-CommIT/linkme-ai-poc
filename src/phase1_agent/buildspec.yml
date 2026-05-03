@@ -1,0 +1,47 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: us-west-2
+    ECR_REPO_NAME: linkme-poc-agentcore
+    IMAGE_TAG: latest
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPO_NAME
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+  build:
+    commands:
+      - echo Building ARM64 Docker image...
+      - cd src/phase1_agent
+      - |
+        cat > Dockerfile << 'DOCKERFILE'
+        FROM --platform=linux/arm64 python:3.11-slim
+
+        WORKDIR /app
+
+        RUN pip install --no-cache-dir strands-agents bedrock-agentcore boto3 pydantic redis
+
+        COPY . /app/phase1_agent/
+        COPY ../common/ /app/common/
+        COPY ../batch_llm/ /app/batch_llm/
+        COPY ../cache_processor/ /app/cache_processor/
+
+        ENV PYTHONPATH=/app
+
+        EXPOSE 8080 8000
+
+        CMD ["python", "-m", "phase1_agent.agentcore_agent"]
+        DOCKERFILE
+      - cd ../..
+      - docker build --platform linux/arm64 -t $REPOSITORY_URI:$IMAGE_TAG -f src/phase1_agent/Dockerfile .
+      - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+  post_build:
+    commands:
+      - echo Pushing Docker image to ECR...
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - echo Build completed

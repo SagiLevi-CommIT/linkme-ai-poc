@@ -1,0 +1,324 @@
+{
+ "Resources": {
+  "IngestionDLQF0F102AE": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "MessageRetentionPeriod": 1209600,
+    "QueueName": "sqs-linkme-poc-ingestion-dlq"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/IngestionDLQ/Resource"
+   }
+  },
+  "IngestionQueue9CC91140": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "QueueName": "sqs-linkme-poc-ingestion",
+    "RedrivePolicy": {
+     "deadLetterTargetArn": {
+      "Fn::GetAtt": [
+       "IngestionDLQF0F102AE",
+       "Arn"
+      ]
+     },
+     "maxReceiveCount": 3
+    },
+    "VisibilityTimeout": 360
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/IngestionQueue/Resource"
+   }
+  },
+  "ResponseDLQ575D6E8A": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "MessageRetentionPeriod": 1209600,
+    "QueueName": "sqs-linkme-poc-response-dlq"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/ResponseDLQ/Resource"
+   }
+  },
+  "ResponseQueue4DA9FAE7": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "QueueName": "sqs-linkme-poc-response",
+    "RedrivePolicy": {
+     "deadLetterTargetArn": {
+      "Fn::GetAtt": [
+       "ResponseDLQ575D6E8A",
+       "Arn"
+      ]
+     },
+     "maxReceiveCount": 3
+    },
+    "VisibilityTimeout": 120
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/ResponseQueue/Resource"
+   }
+  },
+  "BatchDLQ99677C2E": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "FifoQueue": true,
+    "MessageRetentionPeriod": 1209600,
+    "QueueName": "sqs-linkme-poc-batch-dlq.fifo"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/BatchDLQ/Resource"
+   }
+  },
+  "BatchQueue28C25975": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "ContentBasedDeduplication": false,
+    "DeduplicationScope": "messageGroup",
+    "FifoQueue": true,
+    "FifoThroughputLimit": "perMessageGroupId",
+    "QueueName": "sqs-linkme-poc-batch.fifo",
+    "RedrivePolicy": {
+     "deadLetterTargetArn": {
+      "Fn::GetAtt": [
+       "BatchDLQ99677C2E",
+       "Arn"
+      ]
+     },
+     "maxReceiveCount": 3
+    },
+    "VisibilityTimeout": 360
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/BatchQueue/Resource"
+   }
+  },
+  "IngestApi90DC3F9D": {
+   "Type": "AWS::ApiGateway::RestApi",
+   "Properties": {
+    "Name": "apigw-linkme-poc-ingest"
+   },
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/IngestApi/Resource"
+   }
+  },
+  "IngestApiCloudWatchRole4A36F1D0": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "apigateway.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+       ]
+      ]
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/IngestApi/CloudWatchRole/Resource"
+   }
+  },
+  "IngestApiAccountBF00C0B6": {
+   "Type": "AWS::ApiGateway::Account",
+   "Properties": {
+    "CloudWatchRoleArn": {
+     "Fn::GetAtt": [
+      "IngestApiCloudWatchRole4A36F1D0",
+      "Arn"
+     ]
+    }
+   },
+   "DependsOn": [
+    "IngestApi90DC3F9D"
+   ],
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/IngestApi/Account"
+   }
+  },
+  "IngestApiDeploymentE07E77266a15f48a5ecf4d5606bce85b93881cfc": {
+   "Type": "AWS::ApiGateway::Deployment",
+   "Properties": {
+    "Description": "Automatically created by the RestApi construct",
+    "RestApiId": {
+     "Ref": "IngestApi90DC3F9D"
+    }
+   },
+   "DependsOn": [
+    "IngestApimessagesPOST733B641C",
+    "IngestApimessages116DC516"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/IngestApi/Deployment/Resource",
+    "aws:cdk:do-not-refactor": true
+   }
+  },
+  "IngestApiDeploymentStagev1BE7E43FD": {
+   "Type": "AWS::ApiGateway::Stage",
+   "Properties": {
+    "DeploymentId": {
+     "Ref": "IngestApiDeploymentE07E77266a15f48a5ecf4d5606bce85b93881cfc"
+    },
+    "RestApiId": {
+     "Ref": "IngestApi90DC3F9D"
+    },
+    "StageName": "v1"
+   },
+   "DependsOn": [
+    "IngestApiAccountBF00C0B6"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/IngestApi/DeploymentStage.v1/Resource"
+   }
+  },
+  "IngestApimessages116DC516": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Fn::GetAtt": [
+      "IngestApi90DC3F9D",
+      "RootResourceId"
+     ]
+    },
+    "PathPart": "messages",
+    "RestApiId": {
+     "Ref": "IngestApi90DC3F9D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/IngestApi/Default/messages/Resource"
+   }
+  },
+  "IngestApimessagesPOST733B641C": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "StatusCode": "202"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{\"statusCode\": 202}"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": "202"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "IngestApimessages116DC516"
+    },
+    "RestApiId": {
+     "Ref": "IngestApi90DC3F9D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/IngestApi/Default/messages/POST/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/03Mzw6CMAwG8GfhPiqiB6/+uRoVH8DUUWECG7ouhCx7d4MzkVN//dp8OeTrDWQJDjaVZZO26g7+yigbgYO9efuy4C+OHIn9Q38RBPaqQqYBR/AFWd72arrOuJXSOM3iQH1rxo40T+lsuzJW38qIgqxxb0k7tP/l1xl9JK5NOUVRQSjswBemjX+mpRAmnRz3joM4j1wbvVjBMoNl8rRKpW+nWXUERZwfk2QxHfwAAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "linkme-poc-ingestion/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "IngestApiEndpoint5A41F05F": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "IngestApi90DC3F9D"
+      },
+      ".execute-api.us-west-2.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "IngestApiDeploymentStagev1BE7E43FD"
+      },
+      "/"
+     ]
+    ]
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

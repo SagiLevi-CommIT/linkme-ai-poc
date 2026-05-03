@@ -1,0 +1,99 @@
+version: 0.2
+
+# Builds the LLM Service ARM64 container, pushes to ECR with a git-sha
+# immutable tag, then applies the canonical deployment path:
+#   1. aws ecs register-task-definition  (new revision, image pinned)
+#   2. aws ecs update-service --force-new-deployment
+
+env:
+  variables:
+    SERVICE_KEY: "llm-service"
+
+phases:
+  pre_build:
+    commands:
+      - echo "[pre_build] resolve git SHA"
+      - export GIT_SHA=${CODEBUILD_RESOLVED_SOURCE_VERSION:-$(git rev-parse --short HEAD)}
+      - export IMAGE_TAG=${GIT_SHA:0:12}
+      - export CLUSTER_NAME="${ECS_CLUSTER_NAME:-${PROJECT_NAME}-${ENVIRONMENT}}"
+      - export SERVICE_NAME="${ECS_SERVICE_NAME:-${SERVICE_KEY}}"
+      - export TASK_FAMILY="${ECS_TASK_FAMILY:-${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_KEY}}"
+      - export ECR_REPOSITORY_NAME="${ECR_REPOSITORY_URI##*/}"
+      - echo "[pre_build] image tag  = $IMAGE_TAG"
+      - echo "[pre_build] repository = $ECR_REPOSITORY_URI"
+      - echo "[pre_build] cluster    = $CLUSTER_NAME"
+      - echo "[pre_build] service    = $SERVICE_NAME"
+      - echo "[pre_build] task family= $TASK_FAMILY"
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URI"
+      - |
+        if aws ecr describe-images \
+          --region "$AWS_DEFAULT_REGION" \
+          --repository-name "$ECR_REPOSITORY_NAME" \
+          --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
+          export IMAGE_EXISTS=true
+          echo "[pre_build] immutable tag already exists; will reuse $ECR_REPOSITORY_URI:$IMAGE_TAG"
+        else
+          export IMAGE_EXISTS=false
+        fi
+
+  build:
+    commands:
+      - echo "[build] native ARM64 image for $SERVICE_KEY"
+      - |
+        if [ "$IMAGE_EXISTS" = "true" ]; then
+          echo "[build] skipping docker push for existing immutable tag $IMAGE_TAG"
+        else
+          docker build \
+            --platform linux/arm64 \
+            -f src/llm_service/Dockerfile \
+            -t "$ECR_REPOSITORY_URI:$IMAGE_TAG" \
+            .
+          push_log=$(mktemp)
+          if docker push "$ECR_REPOSITORY_URI:$IMAGE_TAG" > "$push_log" 2>&1; then
+            cat "$push_log"
+          else
+            status=$?
+            cat "$push_log"
+            if grep -Eiq 'already exists|cannot be overwritten|tag invalid' "$push_log"; then
+              echo "[build] immutable tag already exists after build; reusing $ECR_REPOSITORY_URI:$IMAGE_TAG"
+            else
+              exit "$status"
+            fi
+          fi
+        fi
+
+  post_build:
+    commands:
+      - echo "[post_build] register new task-definition revision"
+      - aws ecs describe-task-definition
+        --task-definition "$TASK_FAMILY"
+        --region "$AWS_DEFAULT_REGION"
+        --query 'taskDefinition'
+        --output json > current-taskdef.json
+      - jq --arg img "$ECR_REPOSITORY_URI:$IMAGE_TAG"
+        '.containerDefinitions[0].image = $img
+         | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)'
+        current-taskdef.json > new-taskdef.json
+      - NEW_TASK_DEF_ARN=$(aws ecs register-task-definition
+          --region "$AWS_DEFAULT_REGION"
+          --cli-input-json file://new-taskdef.json
+          --query 'taskDefinition.taskDefinitionArn' --output text)
+      - echo "[post_build] new revision  = $NEW_TASK_DEF_ARN"
+      - echo "[post_build] update-service --force-new-deployment"
+      - aws ecs update-service
+        --region "$AWS_DEFAULT_REGION"
+        --cluster "$CLUSTER_NAME"
+        --service "$SERVICE_NAME"
+        --task-definition "$NEW_TASK_DEF_ARN"
+        --force-new-deployment
+        > update-service.out
+      - echo "[post_build] rolling deploy triggered"
+      - echo "IMAGE_URI=$ECR_REPOSITORY_URI:$IMAGE_TAG"
+      - echo "TASK_DEF=$NEW_TASK_DEF_ARN"
+
+artifacts:
+  files:
+    - current-taskdef.json
+    - new-taskdef.json
+    - update-service.out
+  discard-paths: yes

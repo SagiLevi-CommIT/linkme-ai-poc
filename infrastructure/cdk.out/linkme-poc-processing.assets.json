@@ -1,0 +1,21 @@
+{
+  "version": "53.0.0",
+  "files": {
+    "aa7f4f87ac35e15e315df15cac18606b8269d022e449aec11d566f9cd2cb754c": {
+      "displayName": "linkme-poc-processing Template",
+      "source": {
+        "path": "linkme-poc-processing.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "095128162384-us-west-2-a31f8dd8": {
+          "bucketName": "cdk-hnb659fds-assets-095128162384-us-west-2",
+          "objectKey": "aa7f4f87ac35e15e315df15cac18606b8269d022e449aec11d566f9cd2cb754c.json",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::095128162384:role/cdk-hnb659fds-file-publishing-role-095128162384-us-west-2"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

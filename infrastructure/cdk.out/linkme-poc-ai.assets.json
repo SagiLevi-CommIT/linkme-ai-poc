@@ -1,0 +1,36 @@
+{
+  "version": "53.0.0",
+  "files": {
+    "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6": {
+      "displayName": "linkme-poc-ai/Custom::S3AutoDeleteObjectsCustomResourceProvider Code",
+      "source": {
+        "path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "095128162384-us-west-2-ba898da2": {
+          "bucketName": "cdk-hnb659fds-assets-095128162384-us-west-2",
+          "objectKey": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::095128162384:role/cdk-hnb659fds-file-publishing-role-095128162384-us-west-2"
+        }
+      }
+    },
+    "cd3f16a0cd3f9e5ade44d1d4e6041f7ac0aba8659c199601a449fe8e3fc4eed4": {
+      "displayName": "linkme-poc-ai Template",
+      "source": {
+        "path": "linkme-poc-ai.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "095128162384-us-west-2-c768c25e": {
+          "bucketName": "cdk-hnb659fds-assets-095128162384-us-west-2",
+          "objectKey": "cd3f16a0cd3f9e5ade44d1d4e6041f7ac0aba8659c199601a449fe8e3fc4eed4.json",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::095128162384:role/cdk-hnb659fds-file-publishing-role-095128162384-us-west-2"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

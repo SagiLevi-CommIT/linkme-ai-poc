@@ -1,0 +1,104 @@
+{
+  "/linkme-poc-ingestion/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    }
+  ],
+  "/linkme-poc-ingestion/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestionDLQ/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestionDLQF0F102AE"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestionQueue/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestionQueue9CC91140"
+    }
+  ],
+  "/linkme-poc-ingestion/ResponseDLQ/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ResponseDLQ575D6E8A"
+    }
+  ],
+  "/linkme-poc-ingestion/ResponseQueue/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ResponseQueue4DA9FAE7"
+    }
+  ],
+  "/linkme-poc-ingestion/BatchDLQ/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BatchDLQ99677C2E"
+    }
+  ],
+  "/linkme-poc-ingestion/BatchQueue/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BatchQueue28C25975"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestApi/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestApi90DC3F9D"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestApi/Account": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestApiAccountBF00C0B6"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestApi/Endpoint": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestApiEndpoint5A41F05F"
+    }
+  ],
+  "/linkme-poc-ingestion/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestApi/CloudWatchRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestApiCloudWatchRole4A36F1D0"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestApi/Deployment/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestApiDeploymentE07E77266a15f48a5ecf4d5606bce85b93881cfc"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestApi/DeploymentStage.v1/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestApiDeploymentStagev1BE7E43FD"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestApi/Default/messages/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestApimessages116DC516"
+    }
+  ],
+  "/linkme-poc-ingestion/IngestApi/Default/messages/POST/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "IngestApimessagesPOST733B641C"
+    }
+  ]
+}

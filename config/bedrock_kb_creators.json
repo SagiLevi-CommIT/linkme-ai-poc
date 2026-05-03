@@ -1,0 +1,20 @@
+{
+  "BEDROCK_KB_DS_ID": "XUUR927HC8",
+  "BEDROCK_KB_ID": "4OCVLZA0SR",
+  "KB_SOURCE_BUCKET": "linkme-poc-kb-source",
+  "KB_SOURCE_PREFIX": "creators-ingestion/",
+  "account_id": "095128162384",
+  "created_or_verified_at": "2026-04-26T23:32:39.316509+00:00",
+  "data_source_name": "linkme-ai-poc-creators-kb-s3-source-v3",
+  "embedding_model_arn": "arn:aws:bedrock:us-west-2::foundation-model/amazon.titan-embed-text-v2:0",
+  "kb_role_arn": "arn:aws:iam::095128162384:role/role-linkme-ai-poc-creators-kb-v3",
+  "kb_role_name": "role-linkme-ai-poc-creators-kb-v3",
+  "knowledge_base_name": "linkme-ai-poc-creators-kb-v3",
+  "knowledge_base_status": "ACTIVE",
+  "region": "us-west-2",
+  "vector_bucket_arn": "arn:aws:s3vectors:us-west-2:095128162384:bucket/linkme-ai-poc-creators-kb-vectors-v3",
+  "vector_bucket_name": "linkme-ai-poc-creators-kb-vectors-v3",
+  "vector_dimension": 1024,
+  "vector_index_arn": "arn:aws:s3vectors:us-west-2:095128162384:bucket/linkme-ai-poc-creators-kb-vectors-v3/index/linkme-ai-poc-creators-kb-index-v3",
+  "vector_index_name": "linkme-ai-poc-creators-kb-index-v3"
+}

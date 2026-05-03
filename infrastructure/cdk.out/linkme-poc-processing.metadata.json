@@ -1,0 +1,62 @@
+{
+  "/linkme-poc-processing/ProfilesTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "ProfilesTable3B48B4C6"
+      }
+    }
+  ],
+  "/linkme-poc-processing/MessagesTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "MessagesTable05B58A27"
+      }
+    }
+  ],
+  "/linkme-poc-processing/CacheTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "CacheTableC1E6DF7E"
+      }
+    }
+  ],
+  "/linkme-poc-processing/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    }
+  ],
+  "/linkme-poc-processing/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    }
+  ],
+  "/linkme-poc-processing/ProfilesTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ProfilesTable3B48B4C6"
+    }
+  ],
+  "/linkme-poc-processing/MessagesTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MessagesTable05B58A27"
+    }
+  ],
+  "/linkme-poc-processing/CacheTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CacheTableC1E6DF7E"
+    }
+  ],
+  "/linkme-poc-processing/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    }
+  ]
+}

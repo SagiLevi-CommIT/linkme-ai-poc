@@ -1,0 +1,87 @@
+version: 0.2
+
+# Builds the TEI SageMaker wrapper image and pushes to ECR with a git-sha
+# tag suffixed onto the upstream TEI base tag.
+#
+# Unlike the cache-service / llm-service buildspecs, TEI does not run on
+# ECS - the image is pulled by a SageMaker real-time endpoint. So there
+# is no register-task-definition / update-service step here; the image
+# reference in layers/ai/sagemaker.tf is a TF variable that the operator
+# bumps after a successful build to trigger an endpoint rollover.
+#
+# TEI base image is GPU/x86_64 only. The CodeBuild project in cicd must
+# use LINUX_CONTAINER + amd64 + privileged_mode = true.
+#
+# Env injected by Terraform (cicd layer):
+#   AWS_DEFAULT_REGION, AWS_ACCOUNT_ID, PROJECT_NAME, ENVIRONMENT,
+#   ECR_REPOSITORY_URI
+# Additional env injected via codebuild_extra_env_vars:
+#   TEI_BASE_TAG    (e.g. "turing-1.6" for T4 / g4dn)
+
+env:
+  variables:
+    SERVICE_KEY: "tei-embedding"
+    # Default TEI base tag used when no codebuild_extra_env_vars override
+    # is supplied - matches what the SageMaker endpoint currently expects
+    # (T4 / compute-cap 7.5).
+    TEI_BASE_TAG: "turing-1.6"
+
+phases:
+  pre_build:
+    commands:
+      - echo "[pre_build] resolve git SHA"
+      - export GIT_SHA=${CODEBUILD_RESOLVED_SOURCE_VERSION:-$(git rev-parse --short HEAD)}
+      - export SHORT_SHA=${GIT_SHA:0:12}
+      - export IMAGE_TAG="${TEI_BASE_TAG}-sm-${SHORT_SHA}"
+      - export ECR_REPOSITORY_NAME="${ECR_REPOSITORY_URI##*/}"
+      - echo "[pre_build] TEI base tag   = $TEI_BASE_TAG"
+      - echo "[pre_build] image tag      = $IMAGE_TAG"
+      - echo "[pre_build] repository     = $ECR_REPOSITORY_URI"
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URI"
+      - |
+        if aws ecr describe-images \
+          --region "$AWS_DEFAULT_REGION" \
+          --repository-name "$ECR_REPOSITORY_NAME" \
+          --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
+          export IMAGE_EXISTS=true
+          echo "[pre_build] immutable tag already exists; will reuse $ECR_REPOSITORY_URI:$IMAGE_TAG"
+        else
+          export IMAGE_EXISTS=false
+        fi
+
+  build:
+    commands:
+      - echo "[build] build TEI wrapper image for base=$TEI_BASE_TAG"
+      - |
+        if [ "$IMAGE_EXISTS" = "true" ]; then
+          echo "[build] skipping docker push for existing immutable tag $IMAGE_TAG"
+        else
+          docker build \
+            --build-arg TEI_BASE_TAG="$TEI_BASE_TAG" \
+            -f src/tei_embedding/Dockerfile \
+            -t "$ECR_REPOSITORY_URI:$IMAGE_TAG" \
+            src/tei_embedding
+          push_log=$(mktemp)
+          if docker push "$ECR_REPOSITORY_URI:$IMAGE_TAG" > "$push_log" 2>&1; then
+            cat "$push_log"
+          else
+            status=$?
+            cat "$push_log"
+            if grep -Eiq 'already exists|cannot be overwritten|tag invalid' "$push_log"; then
+              echo "[build] immutable tag already exists after build; reusing $ECR_REPOSITORY_URI:$IMAGE_TAG"
+            else
+              exit "$status"
+            fi
+          fi
+        fi
+
+  post_build:
+    commands:
+      - echo '[post_build] build succeeded'
+      - echo "IMAGE_URI=$ECR_REPOSITORY_URI:$IMAGE_TAG"
+      - echo '[post_build] to roll the SageMaker endpoint bump sagemaker_embedding.image_tag in region.hcl to the IMAGE_URI above then apply the ai layer'
+
+artifacts:
+  files:
+    - buildspec.yml
+  discard-paths: yes
