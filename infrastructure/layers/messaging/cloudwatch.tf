@@ -1,6 +1,7 @@
 locals {
   poc_metrics_namespace = "Linkme/PoC"
-  poc_report_dashboard  = "Linkme PoC Report"
+  # AWS dashboard_name allows only [A-Za-z0-9_-] (no spaces); matches spec intent.
+  poc_report_dashboard = "Linkme-PoC-Report"
 }
 
 # Supplier spec: single log group for message.lifecycle JSON lines (30-day retention).
