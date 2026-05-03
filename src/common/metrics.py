@@ -2,7 +2,7 @@
 
 Metrics are emitted as **Embedded Metric Format (EMF)** log lines whenever
 possible. CloudWatch Logs automatically extracts these into the
-``LinkMe/POC/Simulator`` namespace with no ``PutMetricData`` API calls --
+namespace from ``METRICS_NAMESPACE`` (default ``Linkme/PoC``) with no ``PutMetricData`` API calls --
 that keeps simulator burst cost flat (no per-call charges) and avoids
 the PutMetricData throttle limit.
 
@@ -34,7 +34,21 @@ from common.correlation import get_correlation_id
 
 logger = logging.getLogger(__name__)
 
-NAMESPACE = os.environ.get("METRICS_NAMESPACE", "Linkme/PoC")
+
+def _metrics_namespace() -> str:
+    """CloudWatch EMF namespace (supplier: ``Linkme/PoC``).
+
+    Resolved at **emit** time so subprocesses or late env injection still work.
+    Blank ``METRICS_NAMESPACE`` is treated as unset. Legacy doc-only values map to
+    ``Linkme/PoC`` so dashboards, log metric filters, and alarms stay aligned.
+    """
+    raw = os.environ.get("METRICS_NAMESPACE")
+    if raw is None or not str(raw).strip():
+        return "Linkme/PoC"
+    n = str(raw).strip()
+    if n in ("LinkMe/POC/Simulator", "Linkme/POC/Simulator", "linkme/poc/simulator"):
+        return "Linkme/PoC"
+    return n
 
 # "emf" (default): write an Embedded Metric Format log line on stdout.
 # "api": call PutMetricData via boto3 (legacy; costs + throttle risk).
@@ -84,7 +98,7 @@ def _emf_line(
                 "Timestamp": int(time.time() * 1000),
                 "CloudWatchMetrics": [
                     {
-                        "Namespace": NAMESPACE,
+                        "Namespace": _metrics_namespace(),
                         "Dimensions": dimension_sets,
                         "Metrics": list(metrics),
                     }
@@ -150,7 +164,7 @@ def put_metric(
     if METRICS_MODE == "api":
         try:
             _get_client().put_metric_data(
-                Namespace=NAMESPACE,
+                Namespace=_metrics_namespace(),
                 MetricData=[
                     {
                         "MetricName": name,

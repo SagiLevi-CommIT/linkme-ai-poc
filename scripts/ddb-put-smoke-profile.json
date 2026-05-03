@@ -1,0 +1,26 @@
+{
+  "tenant_id": { "S": "creator_smoke_cw_e2e01" },
+  "profile": {
+    "M": {
+      "creator": {
+        "M": {
+          "creator_id": { "S": "creator_smoke_cw_e2e01" },
+          "creator_name": { "S": "Smoke CW E2E" }
+        }
+      },
+      "agent": {
+        "M": {
+          "main_goal": { "S": "Answer short factual questions helpfully in one sentence." },
+          "out_of_scope_reply": { "S": "I can only help with questions in scope for this smoke test." },
+          "tone": { "M": { "preset": { "S": "friendly" } } },
+          "response_rules": { "L": [{ "S": "Keep answers under 200 characters when possible." }] }
+        }
+      },
+      "knowledge_base": { "M": { "kb_id": { "S": "4OCVLZA0SR" }, "documents": { "L": [] } } },
+      "style_training": { "M": { "dm_history_provided": { "BOOL": false } } },
+      "version": { "N": "1" },
+      "created_at": { "S": "2026-05-04T00:00:00Z" },
+      "updated_at": { "S": "2026-05-04T00:00:00Z" }
+    }
+  }
+}
