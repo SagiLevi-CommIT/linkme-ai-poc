@@ -34,6 +34,11 @@ from common import config
 from common.correlation import set_correlation_id
 from common.dynamodb_types import decimal_from_float
 from common.logging_config import setup_logging
+from common.lifecycle_log import emit_message_lifecycle
+from common.message_lifecycle import (
+    build_lifecycle_payload,
+    path_for_cache_tier,
+)
 from common.metrics import put_metric
 from common.models import (
     BatchQueueItem,
@@ -123,6 +128,14 @@ def _install_signal_handlers() -> None:
 # Core processing
 # ----------------------------------------------------------------
 
+def _creator_id(msg: IncomingMessage) -> str:
+    return (msg.creator_id or msg.lead_id or "").strip() or msg.lead_id
+
+
+def _received_at(msg: IncomingMessage) -> str:
+    return (msg.received_at or msg.timestamp or "").strip() or msg.timestamp
+
+
 def _process_single(msg: IncomingMessage, embedding: list[float] | None = None) -> None:
     """Process one message. If `embedding` is provided (pre-computed by the
     worker's batch call) we skip the per-message SageMaker invoke.
@@ -189,6 +202,8 @@ def _process_single(msg: IncomingMessage, embedding: list[float] | None = None) 
             similarity_score=vec.similarity_score,
             correlation_id=correlation_id,
             run_id=_message_run_id(msg),
+            received_at=_received_at(msg),
+            creator_id=_creator_id(msg),
             cached_question=vec.cached_question,
             cached_answer=vec.cached_answer,
         )
@@ -206,6 +221,17 @@ def _process_single(msg: IncomingMessage, embedding: list[float] | None = None) 
         "Unhandled cache tier %s for message %s",
         vec.tier,
         msg.message_id,
+    )
+    emit_message_lifecycle(
+        build_lifecycle_payload(
+            message_id=msg.message_id,
+            creator_id=_creator_id(msg),
+            received_at=_received_at(msg),
+            responded_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            path="cache_miss",
+            status="failed",
+            error_stage="cache_lookup",
+        )
     )
 
 
@@ -242,11 +268,17 @@ def _write_result(
 
     _results_table.put_item(Item=item)
 
-    put_metric(
-        "EndToEndLatencyMs",
-        latency_ms,
-        unit="Milliseconds",
-        dimensions={"Service": "cache-service", "Source": source, "RunId": _message_run_id(msg)},
+    responded = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    emit_message_lifecycle(
+        build_lifecycle_payload(
+            message_id=msg.message_id,
+            creator_id=_creator_id(msg),
+            received_at=_received_at(msg),
+            responded_at=responded,
+            path=path_for_cache_tier(cache_tier),
+            status="success",
+            error_stage=None,
+        )
     )
 
 

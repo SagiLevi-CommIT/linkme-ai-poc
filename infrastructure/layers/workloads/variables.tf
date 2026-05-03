@@ -99,6 +99,24 @@ variable "log_retention_days" {
   default     = 7
 }
 
+variable "message_lifecycle_log_group_arn" {
+  type        = string
+  description = "ARN of /linkme/poc/message-lifecycle (cache + llm PutLogEvents)"
+  default     = ""
+}
+
+variable "message_lifecycle_log_group_name" {
+  type        = string
+  description = "Log group name for MESSAGE_LIFECYCLE_LOG_GROUP env"
+  default     = "/linkme/poc/message-lifecycle"
+}
+
+variable "poc_metrics_namespace" {
+  type        = string
+  description = "METRICS_NAMESPACE for EMF (supplier: Linkme/PoC)"
+  default     = "Linkme/PoC"
+}
+
 variable "memorydb_endpoint" {
   type        = string
   description = "MemoryDB cluster endpoint hostname"

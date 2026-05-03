@@ -50,6 +50,8 @@ resource "aws_ecs_task_definition" "cache_service" {
       { name = "MEMORYDB_ENDPOINT", value = var.memorydb_endpoint },
       { name = "MEMORYDB_PORT", value = tostring(var.memorydb_port) },
       { name = "WORKER_COUNT", value = tostring(coalesce(var.workloads_task_config.cache_service.worker_count, 6)) },
+      { name = "MESSAGE_LIFECYCLE_LOG_GROUP", value = var.message_lifecycle_log_group_name },
+      { name = "METRICS_NAMESPACE", value = var.poc_metrics_namespace },
     ]
   }])
 
@@ -100,6 +102,8 @@ resource "aws_ecs_task_definition" "llm_service" {
       { name = "SAGEMAKER_ENDPOINT_NAME", value = var.sagemaker_endpoint_name },
       { name = "MEMORYDB_ENDPOINT", value = var.memorydb_endpoint },
       { name = "MEMORYDB_PORT", value = tostring(var.memorydb_port) },
+      { name = "MESSAGE_LIFECYCLE_LOG_GROUP", value = var.message_lifecycle_log_group_name },
+      { name = "METRICS_NAMESPACE", value = var.poc_metrics_namespace },
     ]
   }])
 

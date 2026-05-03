@@ -34,6 +34,12 @@ from common import config
 from common.correlation import set_correlation_id
 from common.dynamodb_types import decimal_from_float
 from common.logging_config import setup_logging
+from common.lifecycle_log import emit_message_lifecycle
+from common.message_lifecycle import (
+    PATH_CACHE_HIT_SEMANTIC,
+    build_lifecycle_payload,
+    path_for_cache_tier,
+)
 from common.metrics import put_metric
 from common.models import (
     BatchQueueItem,
@@ -49,6 +55,7 @@ from batch_llm.bedrock_client import invoke_llm
 from batch_llm.embedding_router import load_centroids, route_batch
 from batch_llm.kb_client import retrieve_context
 from batch_llm.prompt_builder import build_system_prompt
+from botocore.exceptions import ClientError, ReadTimeoutError
 
 
 setup_logging(level=os.environ.get("LOG_LEVEL", "INFO"))
@@ -105,8 +112,37 @@ def _chunk(items: list, size: int) -> list[list]:
     return [items[i:i + size] for i in range(0, len(items), size)]
 
 
-def _item_run_id(item: BatchQueueItem) -> str:
-    return item.run_id or RUN_ID or "adhoc"
+def _item_creator_id(item: BatchQueueItem) -> str:
+    return (item.creator_id or item.lead_id or "").strip() or item.lead_id
+
+
+def _item_received_at(item: BatchQueueItem) -> str:
+    return (item.received_at or "").strip() or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _lifecycle_path_for_item(item: BatchQueueItem, cache_tier: CacheTier) -> str:
+    if item.miss_type == MissType.BORDERLINE:
+        return PATH_CACHE_HIT_SEMANTIC
+    return path_for_cache_tier(cache_tier)
+
+
+def _classify_exception(exc: BaseException) -> tuple[str, str]:
+    """Return (status, error_stage) for lifecycle logging."""
+    if isinstance(exc, ReadTimeoutError):
+        return "timeout", "llm"
+    msg = str(exc).lower()
+    if "timeout" in msg or "timed out" in msg:
+        return "timeout", "llm"
+    if isinstance(exc, ClientError):
+        code = (exc.response.get("Error") or {}).get("Code", "")
+        if code in ("ThrottlingException", "TooManyRequestsException"):
+            return "failed", "llm"
+        return "failed", "llm"
+    if "bedrock" in msg or "invoke" in msg:
+        return "failed", "llm"
+    if "retrieve" in msg or "knowledge" in msg or "kb" in msg:
+        return "failed", "kb_retrieval"
+    return "failed", "llm"
 
 
 def _process_batch(items: list[BatchQueueItem]) -> None:
@@ -128,6 +164,9 @@ def _process_batch(items: list[BatchQueueItem]) -> None:
                 model_used="none",
                 cache_tier=CacheTier.FULL_MISS,
                 latency_ms=0,
+                lifecycle_status="failed",
+                lifecycle_error_stage="profile_lookup",
+                lifecycle_path="cache_miss",
             )
         return
 
@@ -151,7 +190,31 @@ def _process_borderline(items: list[BatchQueueItem], profile: CreatorProfile) ->
 
     prompt = build_batch_prompt(system_prompt, questions)
     model = "haiku"
-    raw = invoke_llm(prompt, model=model)
+    try:
+        raw = invoke_llm(prompt, model=model)
+    except Exception as exc:
+        logger.exception("Borderline batch LLM failed")
+        latency_ms = (time.perf_counter() - t0) * 1000
+        put_metric(
+            "LLMBatchLatencyMs",
+            latency_ms,
+            unit="Milliseconds",
+            dimensions={"Service": "llm-service", "Type": "borderline", "Model": model, "RunId": _item_run_id(items[0])},
+        )
+        status, stage = _classify_exception(exc)
+        for item in items:
+            _write_result(
+                item=item,
+                answer="",
+                source="borderline_adapt_error",
+                model_used=model,
+                cache_tier=CacheTier.SEMANTIC_BORDERLINE,
+                latency_ms=latency_ms / max(len(items), 1),
+                lifecycle_status=status,
+                lifecycle_error_stage=stage,
+                lifecycle_path=PATH_CACHE_HIT_SEMANTIC,
+            )
+        return
 
     parsed = parse_batch_response(raw, [q.id for q in questions])
     latency_ms = (time.perf_counter() - t0) * 1000
@@ -187,7 +250,24 @@ def _process_borderline(items: list[BatchQueueItem], profile: CreatorProfile) ->
 def _process_full_miss(items: list[BatchQueueItem], profile: CreatorProfile, lead_id: str) -> None:
     t0 = time.perf_counter()
     combined_query = " ".join(i.question_text for i in items[:3])
-    kb_chunks = retrieve_context(combined_query, lead_id)
+    try:
+        kb_chunks = retrieve_context(combined_query, lead_id)
+    except Exception as exc:
+        logger.exception("KB retrieve failed for lead=%s", lead_id)
+        latency_ms = (time.perf_counter() - t0) * 1000
+        for item in items:
+            _write_result(
+                item=item,
+                answer="",
+                source="kb_retrieve_error",
+                model_used="none",
+                cache_tier=CacheTier.FULL_MISS,
+                latency_ms=latency_ms / max(len(items), 1),
+                lifecycle_status="failed",
+                lifecycle_error_stage="kb_retrieval",
+                lifecycle_path="cache_miss",
+            )
+        return
 
     system_prompt = build_system_prompt(profile, kb_chunks=kb_chunks)
     questions = [
@@ -204,7 +284,31 @@ def _process_full_miss(items: list[BatchQueueItem], profile: CreatorProfile, lea
     )
 
     prompt = build_batch_prompt(system_prompt, questions)
-    raw = invoke_llm(prompt, model=model)
+    try:
+        raw = invoke_llm(prompt, model=model)
+    except Exception as exc:
+        logger.exception("Full-miss batch LLM failed")
+        latency_ms = (time.perf_counter() - t0) * 1000
+        put_metric(
+            "LLMBatchLatencyMs",
+            latency_ms,
+            unit="Milliseconds",
+            dimensions={"Service": "llm-service", "Type": "full_miss", "Model": model, "RunId": _item_run_id(items[0])},
+        )
+        status, stage = _classify_exception(exc)
+        for item in items:
+            _write_result(
+                item=item,
+                answer="",
+                source=f"llm_{model}_error",
+                model_used=model,
+                cache_tier=CacheTier.FULL_MISS,
+                latency_ms=latency_ms / max(len(items), 1),
+                lifecycle_status=status,
+                lifecycle_error_stage=stage,
+                lifecycle_path="cache_miss",
+            )
+        return
 
     parsed = parse_batch_response(raw, [q.id for q in questions])
     latency_ms = (time.perf_counter() - t0) * 1000
@@ -249,7 +353,29 @@ def _fallback_individual(
     t0 = time.perf_counter()
     system_prompt = build_system_prompt(profile, kb_chunks=kb_chunks)
     prompt = f"{system_prompt}\n\nUSER MESSAGE:\n{item.question_text}"
-    answer = invoke_llm(prompt, model=model)  # type: ignore[arg-type]
+    try:
+        answer = invoke_llm(prompt, model=model)  # type: ignore[arg-type]
+    except Exception as exc:
+        logger.exception("Individual LLM fallback failed for %s", item.message_id)
+        latency_ms = (time.perf_counter() - t0) * 1000
+        cache_tier = (
+            CacheTier.SEMANTIC_BORDERLINE
+            if item.miss_type == MissType.BORDERLINE
+            else CacheTier.FULL_MISS
+        )
+        status, stage = _classify_exception(exc)
+        _write_result(
+            item=item,
+            answer="",
+            source=f"llm_{model}_fallback_error",
+            model_used=model,
+            cache_tier=cache_tier,
+            latency_ms=latency_ms,
+            lifecycle_status=status,
+            lifecycle_error_stage=stage,
+            lifecycle_path=_lifecycle_path_for_item(item, cache_tier),
+        )
+        return
     latency_ms = (time.perf_counter() - t0) * 1000
     cache_tier = (
         CacheTier.SEMANTIC_BORDERLINE
@@ -279,6 +405,9 @@ def _write_result(
     model_used: str,
     cache_tier: CacheTier,
     latency_ms: float,
+    lifecycle_status: str = "success",
+    lifecycle_error_stage: str | None = None,
+    lifecycle_path: str | None = None,
 ) -> None:
     ddb_item: dict[str, Any] = {
         "message_id": item.message_id,
@@ -299,11 +428,18 @@ def _write_result(
 
     _results_table.put_item(Item=ddb_item)
 
-    put_metric(
-        "EndToEndLatencyMs",
-        latency_ms,
-        unit="Milliseconds",
-        dimensions={"Service": "llm-service", "Source": source, "RunId": _item_run_id(item)},
+    responded = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    path = lifecycle_path or _lifecycle_path_for_item(item, cache_tier)
+    emit_message_lifecycle(
+        build_lifecycle_payload(
+            message_id=item.message_id,
+            creator_id=_item_creator_id(item),
+            received_at=_item_received_at(item),
+            responded_at=responded,
+            path=path,
+            status=lifecycle_status,
+            error_stage=lifecycle_error_stage,
+        )
     )
 
 

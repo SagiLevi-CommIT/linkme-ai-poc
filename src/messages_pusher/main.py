@@ -119,6 +119,12 @@ def _prepare_message_body(line: str) -> str | None:
         raise ValueError("JSONL record must be an object")
 
     payload["run_id"] = payload.get("run_id") or RUN_ID
+    # PoC lifecycle: ingestion time and tenant id (spec: received_at, creator_id)
+    ingested = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    if not (payload.get("received_at") or "").strip():
+        payload["received_at"] = ingested
+    if not (payload.get("creator_id") or "").strip():
+        payload["creator_id"] = str(payload.get("lead_id") or payload.get("tenant_id") or "")
     return json.dumps(payload, separators=(",", ":"))
 
 

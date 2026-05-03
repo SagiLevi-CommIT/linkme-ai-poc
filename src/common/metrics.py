@@ -34,7 +34,7 @@ from common.correlation import get_correlation_id
 
 logger = logging.getLogger(__name__)
 
-NAMESPACE = os.environ.get("METRICS_NAMESPACE", "LinkMe/POC/Simulator")
+NAMESPACE = os.environ.get("METRICS_NAMESPACE", "Linkme/PoC")
 
 # "emf" (default): write an Embedded Metric Format log line on stdout.
 # "api": call PutMetricData via boto3 (legacy; costs + throttle risk).

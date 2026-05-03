@@ -63,6 +63,23 @@ data "aws_iam_policy_document" "cache_service_inline" {
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["arn:aws:logs:${var.region}:${var.account_id}:log-group:/ecs/${var.project_name}/${var.env}/*"]
   }
+
+  dynamic "statement" {
+    for_each = var.message_lifecycle_log_group_arn != "" ? [1] : []
+    content {
+      sid    = "MessageLifecycleLogs"
+      effect = "Allow"
+      actions = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams",
+      ]
+      resources = [
+        var.message_lifecycle_log_group_arn,
+        "${var.message_lifecycle_log_group_arn}:*",
+      ]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "cache_service" {
@@ -117,6 +134,23 @@ data "aws_iam_policy_document" "llm_service_inline" {
     effect    = "Allow"
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["arn:aws:logs:${var.region}:${var.account_id}:log-group:/ecs/${var.project_name}/${var.env}/*"]
+  }
+
+  dynamic "statement" {
+    for_each = var.message_lifecycle_log_group_arn != "" ? [1] : []
+    content {
+      sid    = "MessageLifecycleLogs"
+      effect = "Allow"
+      actions = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams",
+      ]
+      resources = [
+        var.message_lifecycle_log_group_arn,
+        "${var.message_lifecycle_log_group_arn}:*",
+      ]
+    }
   }
 }
 

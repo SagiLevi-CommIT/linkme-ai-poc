@@ -27,6 +27,10 @@ class IncomingMessage(BaseModel):
     timestamp: str
     correlation_id: str = ""
     run_id: str = ""
+    # Ingestion time for PoC lifecycle (ISO 8601). Set by messages-pusher if absent.
+    received_at: str = ""
+    # Creator / tenant id for reporting (defaults to lead_id when omitted in JSONL).
+    creator_id: str = ""
 
 
 class CacheResult(BaseModel):
@@ -47,6 +51,8 @@ class BatchQueueItem(BaseModel):
     similarity_score: float
     correlation_id: str
     run_id: str = ""
+    received_at: str = ""
+    creator_id: str = ""
     cached_question: str | None = None
     cached_answer: str | None = None
 

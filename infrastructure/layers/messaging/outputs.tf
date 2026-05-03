@@ -63,6 +63,26 @@ output "results_table_name" {
   value       = local.enable_messaging ? aws_dynamodb_table.results[0].name : ""
 }
 
+output "message_lifecycle_log_group_name" {
+  description = "CloudWatch log group name for message.lifecycle JSON lines"
+  value       = local.enable_messaging ? aws_cloudwatch_log_group.message_lifecycle[0].name : ""
+}
+
+output "message_lifecycle_log_group_arn" {
+  description = "ARN of the message lifecycle log group"
+  value       = local.enable_messaging ? aws_cloudwatch_log_group.message_lifecycle[0].arn : ""
+}
+
+output "poc_metrics_namespace" {
+  description = "Custom CloudWatch namespace for PoC log-derived metrics"
+  value       = local.enable_messaging ? local.poc_metrics_namespace : ""
+}
+
+output "poc_report_dashboard_name" {
+  description = "CloudWatch dashboard name for the client PoC report"
+  value       = local.enable_messaging ? aws_cloudwatch_dashboard.poc_report[0].dashboard_name : ""
+}
+
 output "simulator_dashboard_name" {
   description = "CloudWatch simulator dashboard name"
   value       = local.enable_messaging ? aws_cloudwatch_dashboard.simulator[0].dashboard_name : ""
