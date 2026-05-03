@@ -120,6 +120,12 @@ def _item_received_at(item: BatchQueueItem) -> str:
     return (item.received_at or "").strip() or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _item_run_id(item: BatchQueueItem) -> str:
+    """Prefer per-item run_id from SQS payload, then service RUN_ID, else adhoc."""
+    rid = (item.run_id or RUN_ID or "").strip()
+    return rid if rid else "adhoc"
+
+
 def _lifecycle_path_for_item(item: BatchQueueItem, cache_tier: CacheTier) -> str:
     if item.miss_type == MissType.BORDERLINE:
         return PATH_CACHE_HIT_SEMANTIC
