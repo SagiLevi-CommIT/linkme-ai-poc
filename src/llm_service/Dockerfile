@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /build
-COPY requirements.txt .
+COPY src/llm_service/requirements.txt requirements.txt
 RUN pip install --prefix=/install -r requirements.txt
 
 FROM --platform=linux/arm64 public.ecr.aws/docker/library/python:3.12-slim AS runtime

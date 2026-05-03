@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /build
 
 # Only copy requirements first to maximise layer caching
-COPY requirements.txt .
+COPY src/cache_service/requirements.txt requirements.txt
 RUN pip install --prefix=/install -r requirements.txt
 
 # ----------------------------------------------------------------
